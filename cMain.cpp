@@ -3,8 +3,6 @@
 #include "resource.h"
 #include "wx/mstream.h"
 #include "wx/msw/private.h"
-#include "board.h"
-#include "engine.h"
 #include "string.h"
 #include <thread>
 
@@ -138,7 +136,7 @@ cMain::cMain() : wxFrame(nullptr, wxID_ANY, "Pugs versus Bears", wxPoint(30,30),
 
 	box_whiteEngineControls = new wxStaticBox(this, wxID_ANY, "Engine (White)", wxPoint(5, 405), wxSize(190, 100));
 	text_whiteAllocTime = new wxStaticText(box_whiteEngineControls, wxID_ANY, "Allocated time (ms): ", wxPoint(5, 15));
-	textctrl_whiteAllocTime = new wxTextCtrl(box_whiteEngineControls, wxID_ANY, "1000", wxPoint(120, 15), wxSize(45, 20));
+	textctrl_whiteAllocTime = new wxTextCtrl(box_whiteEngineControls, wxID_ANY, "5000", wxPoint(120, 15), wxSize(45, 20));
 	text_whiteQuiescenceDepth = new wxStaticText(box_whiteEngineControls, wxID_ANY, "Quiescence depth: ", wxPoint(5, 40));
 	textctrl_whiteQuiescenceDepth = new wxTextCtrl(box_whiteEngineControls, wxID_ANY, "2", wxPoint(120, 40), wxSize(45, 20));
 	checkbox_whiteRandomize = new wxCheckBox(box_whiteEngineControls, wxID_ANY, "Randomize turns", wxPoint(5,65));
@@ -146,22 +144,24 @@ cMain::cMain() : wxFrame(nullptr, wxID_ANY, "Pugs versus Bears", wxPoint(30,30),
 
 	box_blackEngineControls = new wxStaticBox(this, wxID_ANY, "Engine (Black)", wxPoint(5, 300), wxSize(190, 100));
 	text_blackAllocTime = new wxStaticText(box_blackEngineControls, wxID_ANY, "Allocated time (ms): ", wxPoint(5, 15));
-	textctrl_blackAllocTime = new wxTextCtrl(box_blackEngineControls, wxID_ANY, "1000", wxPoint(120, 15), wxSize(45, 20));
+	textctrl_blackAllocTime = new wxTextCtrl(box_blackEngineControls, wxID_ANY, "5000", wxPoint(120, 15), wxSize(45, 20));
 	text_blackQuiescenceDepth = new wxStaticText(box_blackEngineControls, wxID_ANY, "Quiescence depth: ", wxPoint(5, 40));
 	textctrl_blackQuiescenceDepth = new wxTextCtrl(box_blackEngineControls, wxID_ANY, "2", wxPoint(120, 40), wxSize(45, 20));
 	checkbox_blackRandomize = new wxCheckBox(box_blackEngineControls, wxID_ANY, "Randomize turns", wxPoint(5, 65));
 	checkbox_blackAutorespond = new wxCheckBox(box_blackEngineControls, wxID_ANY, "Autorespond", wxPoint(5, 80));
 
-	box_engineInfo = new wxStaticBox(this, wxID_ANY, "Engine Progress", wxPoint(5, 510), wxSize(190, 145));
+	box_engineInfo = new wxStaticBox(this, wxID_ANY, "Engine Progress", wxPoint(5, 510), wxSize(190, 160));
 	gauge_engineProgress = new wxGauge(box_engineInfo, wxID_ANY, engine->timeLimit, wxPoint(5,20), wxSize(180,20));
 	text_moveData = new wxStaticText(box_engineInfo, wxID_ANY, "opt", wxPoint(5, 45));
 	text_depth = new wxStaticText(box_engineInfo, wxID_ANY, "Depth", wxPoint(5, 60));
 	text_timePassed = new wxStaticText(box_engineInfo, wxID_ANY, "Time, speed", wxPoint(5, 75));
 	text_nodes = new wxStaticText(box_engineInfo, wxID_ANY, "Normal nodes", wxPoint(5, 90));
 	text_horizonNodes = new wxStaticText(box_engineInfo, wxID_ANY, "Horizon nodes", wxPoint(5, 105));
-	checkbox_drawUpdates = new wxCheckBox(box_engineInfo, wxID_ANY, "Draw Updates", wxPoint(5, 120));
+	text_hashHits = new wxStaticText(box_engineInfo, wxID_ANY, "Hashtable Hits", wxPoint(5, 120));
+	checkbox_drawUpdates = new wxCheckBox(box_engineInfo, wxID_ANY, "Draw Updates", wxPoint(5, 135));
+	checkbox_blackAutorespond->Set3StateValue(wxCheckBoxState::wxCHK_CHECKED);
 
-	box_drawMode = new wxStaticBox(this, wxID_ANY, "Draw Mode", wxPoint(5, 660), wxSize(190, 60));
+	box_drawMode = new wxStaticBox(this, wxID_ANY, "Draw Mode", wxPoint(5, 670), wxSize(190, 60));
 	radiobtn_pugsandbears = new wxRadioButton(box_drawMode, 10007, "Pugs and Bears", wxPoint(5,20));
 	radiobtn_classic = new wxRadioButton(box_drawMode, 10008, "Classics", wxPoint(5, 35));
 	radiobtn_pugsandbears->SetValue(true);
@@ -179,7 +179,11 @@ cMain::cMain() : wxFrame(nullptr, wxID_ANY, "Pugs versus Bears", wxPoint(30,30),
 }
 
 cMain::~cMain() {
-
+	if (state == appState::EngineComputing) {
+		engine->timeLimit = 0;
+		checkbox_blackAutorespond->Set3StateValue(wxCheckBoxState::wxCHK_UNCHECKED);
+		checkbox_whiteAutorespond->Set3StateValue(wxCheckBoxState::wxCHK_UNCHECKED);
+	}
 }
 
 void cMain::sizeEvent(wxSizeEvent& event) {
@@ -232,6 +236,7 @@ void cMain::aiMoveClicked(wxCommandEvent& event) {
 	if (state == appState::EngineComputing) return;
 	engineTimer->Start(100);
 	std::thread t1(&cMain::calculateAIMove, this);
+	ai_thread = &t1;
 	t1.detach();
 	event.Skip();
 }
@@ -371,6 +376,8 @@ void cMain::OnTimer(wxTimerEvent& event) {
 	text_timePassed->SetLabel("Time, speed: " + std::to_string(int(timePassed * 1000)) + " ms, " + std::to_string(int((engine->getNodes() + engine->getQuiescenceNodes()) / 1000 / timePassed)) + " kN/s");
 	text_nodes->SetLabel("Normal nodes: " + std::to_string(engine->getNodes()));
 	text_horizonNodes->SetLabel("Horizon nodes: " + std::to_string(engine->getQuiescenceNodes()));
+	text_hashHits->SetLabel("Hashtable Hits: " + std::to_string(engine->getHashHits(board)));
+
 	drawPane->paintNow();
 	if (state == appState::EngineComputing) engineTimer->Start(10);
 	else if ((state == appState::Idle) && (((colour == Colour::White) && checkbox_whiteAutorespond->IsChecked()) || ((colour == Colour::Black) && checkbox_blackAutorespond->IsChecked()))) {
@@ -397,6 +404,12 @@ void cMain::calculateAIMove() {
 			gauge_engineProgress->SetRange(engine->timeLimit * 1000);
 			gauge_engineProgress->SetValue(0);
 			engine->updateFct = std::bind(&cMain::printUpdate, this, std::placeholders::_1);
+			//Engine config
+			engine->useHashtable = true;
+			board->improvedDrawDetection = true;
+			engine->useKingEndgameScoreboard = true;
+			engine->nullmove = false;
+
 			engine->calculateMove_iterativeDeepening(this->board, this->colour);
 		}
 		else engine->calculateMove_random(this->board, this->colour);
@@ -410,6 +423,12 @@ void cMain::calculateAIMove() {
 			gauge_engineProgress->SetRange(engine->timeLimit * 1000);
 			gauge_engineProgress->SetValue(0);
 			engine->updateFct = std::bind(&cMain::printUpdate, this, std::placeholders::_1);
+			//Engine config
+			engine->useHashtable = true;
+			board->improvedDrawDetection = true;
+			engine->useKingEndgameScoreboard = true;
+			engine->nullmove = false;
+
 			engine->calculateMove_iterativeDeepening(this->board, this->colour);
 		}
 		else engine->calculateMove_random(this->board, this->colour);
@@ -719,6 +738,7 @@ void BasicDrawPane::mouseDown(wxMouseEvent& event) {
 				if (((parent->colour == Colour::White) && parent->checkbox_whiteAutorespond->IsChecked()) || ((parent->colour == Colour::Black) && parent->checkbox_blackAutorespond->IsChecked())) {
 					parent->engineTimer->Start(100);
 					std::thread t1(&cMain::calculateAIMove, parent);
+					parent->ai_thread = &t1;
 					t1.detach();
 				}
 				return;

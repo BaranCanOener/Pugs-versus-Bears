@@ -1,10 +1,11 @@
 #pragma once
 #include "wx/wx.h"
 #include "wx/sizer.h"
-#include "board.h"
-#include "pieces.h"
-#include "engine.h"
+#include "../CppChessEngine/board.h"
+#include "../CppChessEngine/pieces.h"
+#include "../CppChessEngine/engine.h"
 #include "wx/spinbutt.h"
+#include <thread>
 
 class BasicDrawPane : public wxPanel
 {
@@ -66,6 +67,7 @@ public:
 	Engine* engine;
 	Colour colour = Colour::White;
 	appState state = appState::Idle;
+	std::thread* ai_thread;
 	std::vector<MoveData> moveHistory;
 	int gameNumber = 0;
 	int whiteWins = 0;
@@ -118,6 +120,7 @@ public:
 	wxStaticText* text_timePassed = nullptr;
 	wxStaticText* text_nodes = nullptr;
 	wxStaticText* text_horizonNodes = nullptr;
+	wxStaticText* text_hashHits = nullptr;
 	wxCheckBox* checkbox_drawUpdates = nullptr;
 
 	wxStaticBox* box_drawMode = nullptr;
