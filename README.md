@@ -1,7 +1,10 @@
 # Pugs-versus-Bears
 A chess game based on the engine written for Console Chess (https://github.com/BaranCanOener/ConsoleChess), featuring a GUI using the wxWidgets-framework.
-Update April/21: Hashtables have been added, and the engine now activates the king during the endgame; moreover, the engine is much better at avoiding stalemates now. Several minor improvements and bugfixes were made.
+
+Update April/21: Zobrist key based hashtables Hashtables have been added (see the Hashtable class in board.h), and the engine now activates the king during the endgame; moreover, the engine is much better at avoiding stalemates now. Several minor improvements and bugfixes were made.
+
 A major clean-up of the code would be next on the list - especially the code blocks on alphabeta/quiescence search have quite some redundancy.
+
 
 Special thanks to:
 - Kimberley for designing the alternative Chess pieces
