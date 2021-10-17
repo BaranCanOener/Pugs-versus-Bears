@@ -376,7 +376,7 @@ void cMain::OnTimer(wxTimerEvent& event) {
 	text_timePassed->SetLabel("Time, speed: " + std::to_string(int(timePassed * 1000)) + " ms, " + std::to_string(int((engine->getNodes() + engine->getQuiescenceNodes()) / 1000 / timePassed)) + " kN/s");
 	text_nodes->SetLabel("Normal nodes: " + std::to_string(engine->getNodes()));
 	text_horizonNodes->SetLabel("Horizon nodes: " + std::to_string(engine->getQuiescenceNodes()));
-	text_hashHits->SetLabel("Hashtable Hits: " + std::to_string(engine->getHashHits(board)));
+	text_hashHits->SetLabel("Hashtable Hits: " + std::to_string(board->transpos_table.getHashHits()));
 
 	drawPane->paintNow();
 	if (state == appState::EngineComputing) engineTimer->Start(10);
