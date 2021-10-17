@@ -42,9 +42,8 @@ int Engine::quiescenceSearch_moveSorting(ChessBoard* board, Colour colour, char 
 	Engine::updateSearchProgress(board);
 	if (useHashtable) {
 		HashEntry data = board->transpos_table.getHashEntry();
-		if ((data.zobristKey == board->transpos_table.hash)) {
-
-			board->transpos_table.hashHits++;
+		if ((data.zobristKey == board->transpos_table.getHash())) {
+			board->transpos_table.incrementHashHits();
 			if ((data.distanceToLeaf >= (depthLimit + quiescenceLimit - depth))) {
 				if ((data.type == NodeType::Exact))
 					return data.value;
@@ -191,9 +190,8 @@ int Engine::quiescenceSearch(ChessBoard* board, Colour colour, char depth, int a
 	Engine::updateSearchProgress(board);
 	if (useHashtable) {
 		HashEntry data = board->transpos_table.getHashEntry();
-		if ((data.zobristKey == board->transpos_table.hash)) {
-
-			board->transpos_table.hashHits++;
+		if ((data.zobristKey == board->transpos_table.getHash())) {
+			board->transpos_table.incrementHashHits();
 			if ((data.distanceToLeaf >= (depthLimit + quiescenceLimit - depth))) {
 				if ((data.type == NodeType::Exact))
 					return data.value;
@@ -439,9 +437,8 @@ int Engine::alphaBeta(ChessBoard* board, Colour colour, char depth, int alpha, i
 
 		if (useHashtable) {
 			HashEntry data = board->transpos_table.getHashEntry();
-			if ((data.zobristKey == board->transpos_table.hash)) {
-
-				board->transpos_table.hashHits++;
+			if ((data.zobristKey == board->transpos_table.getHash())) {
+				board->transpos_table.incrementHashHits();
 				if ((data.distanceToLeaf >= (depthLimit + quiescenceLimit - depth))) {
 					if ((data.type == NodeType::Exact))
 						return data.value;
@@ -799,13 +796,13 @@ int Engine::evalHeuristic(ChessBoard* board) {
 	return evaluation;
 }
 
+//TODO: To Do: Rewrite this
 int Engine::calculateMove_fixedDepth(ChessBoard* board, Colour colour) {
 	Engine::abortSearch = false;
 	Engine::iterativeDeepening = false;
 	Engine::nodes = 0;
 	Engine::quiescenceNodes = 0;
 	Engine::optimalTurnSequence = std::vector<std::tuple<char, char, char, char>>(Engine::depthLimit + Engine::quiescenceLimit + 1);
-	board->transpos_table.hashHits = 0;
 	Engine::startTime = std::clock();
 	board->allowIllegalMoves = true;
 	Engine::optimalValue = Engine::alphaBeta(board, colour, 0, Engine::WHITE_MIN, Engine::BLACK_MAX);
@@ -826,8 +823,9 @@ int Engine::calculateMove_iterativeDeepening(ChessBoard* board, Colour colour) {
 	Engine::optimalTurnSequence = std::vector<std::tuple<char, char, char, char>>(Engine::depthLimit + Engine::quiescenceLimit + 1);
 	Engine::optimalTurnSequence_moves = std::vector<MoveData>(Engine::depthLimit + Engine::quiescenceLimit + 1);
 	
-	board->transpos_table.hashHits = 0;
-	board->transpos_table.initializeHash(board, colour);
+	board->transpos_table.depreciateHashtable();
+	//board->transpos_table.clearHashtable();
+	//board->transpos_table.initializeHash(board, colour);
 
 	//King endgame table
 	if (useKingEndgameScoreboard)
@@ -882,10 +880,6 @@ int Engine::getNodes() {
 
 int Engine::getQuiescenceNodes() {
 	return Engine::quiescenceNodes;
-}
-
-int Engine::getHashHits(ChessBoard* board) {
-	return board->transpos_table.hashHits;
 }
 
 double Engine::getTimePassed() {

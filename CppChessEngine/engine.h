@@ -55,7 +55,6 @@ public:
 	std::function<void(Engine*, ChessBoard*)> updateFct; //Function to call periodically while computing turn 
 	int getNodes();
 	int getQuiescenceNodes();
-	int getHashHits(ChessBoard* board);
 	double getTimePassed();
 	int evalHeuristic(ChessBoard* board);
 	int calculateMove_fixedDepth(ChessBoard* board, Colour colour);

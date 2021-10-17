@@ -9,17 +9,19 @@ class ChessBoard;
 struct MoveData;
 
 struct HashEntry {
-	unsigned long long zobristKey;
+	uint64_t zobristKey;
+	char distanceToLeaf = 0;
 	int value;
 	NodeType type;
-	char distanceToLeaf = 0;
 	std::tuple<char, char, char, char> preferredMove;
 };
 
 class Hashtable
 {
 private:
-	static const int HASH_SIZE = 10000000;
+	static const size_t HASH_SIZE = 10000000;
+	HashEntry* table;
+	uint64_t hash;
 	uint64_t hk_whitePawn[8][8];
 	uint64_t hk_blackPawn[8][8];
 	uint64_t hk_whiteRook[8][8];
@@ -38,11 +40,14 @@ private:
 	uint64_t hk_blackRRookCastling;
 	uint64_t hk_enPassantSquare[8][8];
 	uint64_t hk_sideToMove;
-	HashEntry* table = new HashEntry[HASH_SIZE];
+	unsigned int hashHits;
 public:
-	uint64_t hash;
-	int hashHits;
 	HashEntry getHashEntry();
+	uint64_t getHash() { return hash; }
+	unsigned int getHashHits() { return hashHits; }
+	void incrementHashHits() { hashHits++;  }
+	void clearHashtable();
+	void depreciateHashtable();
 	void setHashEntry(int depth, int value, int alpha, int beta, std::tuple<char, char, char, char> preferredMove);
 	void initializeHash(ChessBoard* board, Colour colour);
 	void updateHash(ChessBoard* board, MoveData move);
@@ -64,7 +69,7 @@ struct MoveData
 	bool isPromotion = false;
 	bool isEnPassant = false;
 	bool validMove = false;
-	int prevCounter_50move = 0;
+	unsigned int prevCounter_50move = 0;
 };
 
 class ChessBoard
@@ -74,21 +79,19 @@ private:
 	Piece* originalSquares[8][8];
 	int plyCount;
 	std::vector<Piece*> promotedQueens;
-
 	std::tuple<char, char> enPassantPawn = std::tuple<char,char>(127,127); //stores the location of a pawn allowing for an en passant capture
-	int counter_50move = 0;
+	unsigned int counter_50move = 0;
 public:
 	bool allowIllegalMoves = false;
-	std::tuple<char, char> kingWhiteLocation;
-	std::tuple<char, char> kingBlackLocation;
-	bool improvedDrawDetection = true;
-
-	void setKingScoreboard(bool endgame);
 	Hashtable transpos_table;
-
+	bool improvedDrawDetection = true;
 	bool whiteCastled = false;
 	bool blackCastled = false;
 	Piece* squares[8][8];
+	std::tuple<char, char> kingWhiteLocation;
+	std::tuple<char, char> kingBlackLocation;
+
+	void setKingScoreboard(bool endgame);
 	void resetToDebugBoard();
 	void resetBoard();
 	int getPlyCount();
@@ -117,7 +120,7 @@ public:
 		plyCount = rhs.plyCount;
 		allowIllegalMoves = rhs.allowIllegalMoves;
 		improvedDrawDetection = rhs.improvedDrawDetection;
-		ChessBoard::transpos_table.initializeHash(this, Colour::White); //tbd
+		ChessBoard::transpos_table.initializeHash(this, Colour::White);
 		initializeOriginalSquares();
 	}
 	ChessBoard();

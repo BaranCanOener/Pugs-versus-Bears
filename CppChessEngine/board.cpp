@@ -1,7 +1,9 @@
 #include "board.h"
 #include <random>
-#include <iostream>
 
+/*Class constructor.
+Uses a Mersenne twister engine to assign uniformly distributed pseudorandom integers
+to each of the piece/move characteristics used in generating a Zobrist hash.*/
 Hashtable::Hashtable() {
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -28,16 +30,27 @@ Hashtable::Hashtable() {
 	hk_whiteRRookCastling = dis(gen);
 	hk_blackRRookCastling = dis(gen);
 	hashHits = 0;
+	hash = 0;
+	table = new HashEntry[HASH_SIZE];
 }
 
 Hashtable::~Hashtable() {
 	delete Hashtable::table;
 }
 
+void Hashtable::depreciateHashtable() {
+	hashHits = 0;
+	for (int i = 0; i < Hashtable::HASH_SIZE; i++) {
+		Hashtable::table[i].distanceToLeaf = 0;
+	}
+}
+
 HashEntry Hashtable::getHashEntry() {
 	return Hashtable::table[Hashtable::hash % Hashtable::HASH_SIZE];
 }
 
+/*Writes an entry to the hashtable;
+based on the valuation and the alpha/beta window, the type of node is stored as well.*/
 void Hashtable::setHashEntry(int distanceToLeaf, int value, int alpha, int beta, std::tuple<char, char, char, char> preferredMove) {
 	unsigned long index = Hashtable::hash % Hashtable::HASH_SIZE;
 
@@ -60,12 +73,18 @@ void Hashtable::setHashEntry(int distanceToLeaf, int value, int alpha, int beta,
 
 }
 
-void Hashtable::initializeHash(ChessBoard* board, Colour colour) {
-	hash = 0;
+/*Resets the hashtable data*/
+void Hashtable::clearHashtable() {
+	hashHits = 0;
 	for (int i = 0; i < Hashtable::HASH_SIZE; i++) {
 		Hashtable::table[i].distanceToLeaf = 0;
 		Hashtable::table[i].zobristKey = 0;
 	}
+}
+
+/*Initializes a hash based on the current board*/
+void Hashtable::initializeHash(ChessBoard* board, Colour colour) {
+	hash = 0;
 	for (int x = 0; x <= 7; x++)
 		for (int y = 0; y <= 7; y++) {
 			if ((board->squares[x][y] != nullptr) && (board->squares[x][y]->colour == Colour::White)) {
@@ -100,6 +119,9 @@ void Hashtable::initializeHash(ChessBoard* board, Colour colour) {
 	hash = hash ^ hk_sideToMove;
 }
 
+/*Incremental Zobrish hash update function:
+Based on the random quantities assigned in the constructor and stored in the hk_-variables,
+the hash is updated.*/
 void Hashtable::updateHash(ChessBoard* board, MoveData move) {
 	hash ^= hk_sideToMove;
 	if (move.pieceMoved->colour == Colour::White) {
@@ -208,6 +230,7 @@ void Hashtable::updateHash(ChessBoard* board, MoveData move) {
 		hash = hash ^ hk_enPassantSquare[std::get<0>(move.prevEnPassantPawn)][std::get<1>(move.prevEnPassantPawn)];
 }
 
+/**/
 void ChessBoard::setKingScoreboard(bool endgame)
 {
 	if (endgame) {
@@ -315,10 +338,8 @@ void ChessBoard::resetBoard() {
 	for (int x = 0; x < 8; x++) {
 		for (int y = 0; y < 8; y++) {
 			ChessBoard::squares[x][y] = ChessBoard::originalSquares[x][y];
-			if (ChessBoard::squares[x][y] != nullptr) {
+			if (ChessBoard::squares[x][y] != nullptr) 
 				ChessBoard::squares[x][y]->moveCount = 0;
-			}
-				
 		}
 	}
 	ChessBoard::kingWhiteLocation = std::tuple<char, char>(4, 0);
@@ -328,6 +349,7 @@ void ChessBoard::resetBoard() {
 	ChessBoard::blackCastled = false;
 	ChessBoard::plyCount = 0;
 	ChessBoard::counter_50move = 0;
+	ChessBoard::transpos_table.initializeHash(this, Colour::White);
 }
 
 int ChessBoard::getPlyCount()
@@ -849,6 +871,4 @@ ChessBoard::ChessBoard() {
 	ChessBoard::initializeOriginalSquares();
 	ChessBoard::resetBoard();
 	ChessBoard::promotedQueens.reserve(16);
-	ChessBoard::resetBoard();
-	ChessBoard::transpos_table.initializeHash(this, Colour::White);
 }
