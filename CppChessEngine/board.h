@@ -3,6 +3,10 @@
 #include <tuple>
 #include <string>
 
+#ifndef _WIN32
+	#include <climits>
+#endif
+
 enum class NodeType { Exact, Lower, Upper };
 
 class ChessBoard;
